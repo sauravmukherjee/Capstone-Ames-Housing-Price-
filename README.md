@@ -1,1 +1,1 @@
-# Capstone-Ames-Housing-Price-
+# ames-housing-price-prediction-model
