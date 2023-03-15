@@ -1,0 +1,441 @@
+---
+title: "Housing Price Prediction Model using modeldata package - a subset of ames housing data"
+author: "Saurav Mukherjee"
+date: "2023-02-16"
+output:
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+## Introduction
+
+I am building home price prediction model. I am using Ames Housing dataset to explore the attributes which have been identified somehow influencing the housing cost.
+
+Initially I wanted to use the 'Ames Housing Data" - a data set describing the sale of individual residential property in Ames, Iowa from 2006 to 2010. The data set contains 2930 observations and a large number of explanatory
+variables (23 nominal, 23 ordinal, 14 discrete, and 20 continuous) involved in assessing home
+values. Howvever, I looked at a dataset which is a subset of this dataset and which is available within modeldata package created by https://modeldata.tidymodels.org/. 
+I did some research and looked at the model - Hedonic Pricing Method to predict the house price. The Hedonic Pricing Method talks about internal characteristics as well as the external factors affecting the price of a good. Based on the idea of hedonic price modeling I am looking the is that neighborhood-specific and unit-specific characteristics help determine house prices.
+
+
+Data - Ames Housing Data
+
+A data set from De Cock (2011) has 82 fields were recorded for 2,930 properties in Ames IA. I used a version from the package modeldata dataset name as ames which is copies from the original AmesHousing package but does not include a few quality columns that appear to be outcomes rather than predictors.
+
+
+##########################################################
+# Load required Libraries
+# Load ames dataset
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = TRUE}
+
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+if(!require(lubridate)) install.packages("lubridate", repos = "http://cran.us.r-project.org")
+if(!require(dplyr)) install.packages("dplyr", repos = "http://cran.us.r-project.org")
+if(!require(here)) install.packages("here", repos = "http://cran.us.r-project.org")
+if(!require(rstudioapi)) install.packages("rstudioapi", repos = "http://cran.us.r-project.org")
+if(!require(broom)) install.packages("broom", repos = "http://cran.us.r-project.org")
+if(!require(modeldata)) install.packages("modeldata", repos = "http://cran.us.r-project.org")
+if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+if(!require(moments)) install.packages("moments", repos = "http://cran.us.r-project.org")
+if(!require(corrr)) install.packages("corrr", repos = "http://cran.us.r-project.org")
+#if(!require(tidymodels)) install.packages("tidymodels", repos = "http://cran.us.r-project.org")
+#if(!require(lares)) install.packages("lares", repos = "http://cran.us.r-project.org")
+if(!require(GGally)) install.packages("GGally", repos = "http://cran.us.r-project.org")
+
+library(tidyverse)
+library(caret)
+library(lubridate)
+library(dplyr)
+library(here)
+library(rstudioapi)
+library(broom)
+library(modeldata)
+library(ggplot2)
+library(moments)
+library(GGally)
+library(corrr)
+
+# Load ames Dataset
+data(ames)
+```
+
+
+## Exploratory Data Analysis
+
+
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
+############### Data Exploration and Visualization
+
+# To make graphs more readable disabling scientific notation
+options(scipen = 100)
+
+knitr::kable(dim(ames),caption = "Ames Housing Dataset dimension")
+
+#knitr::kable(colnames(ames),caption = "Ames Housing Dataset Columns")
+
+knitr::kable(str(ames),caption = "Ames Housing Dataset")
+
+# Sale Price Characteristics 
+
+ames %>% 
+  ggplot(aes(Sale_Price)) + 
+    geom_histogram(aes(y = ..density..),
+                   colour = 1, fill = "black") +
+  labs(title = "Distribution of house prices", x = "Price($)", y = "Frequency") +
+  geom_density() +
+  theme_minimal()
+
+# The distribution of SalePrice is right-skewed. Let's check its Skewness and Kurtosis statistics.
+
+# The distribution of SalePrice is right-skewed. Let's check its Skewness and Kurtosis statistics.
+cat("\nSale Price skewness :", skewness(ames$Sale_Price))
+cat("\nSale Price kurtosis :", kurtosis(ames$Sale_Price))
+
+```
+## Sale Price Observation
+The Sale Price is right-skewed 
+
+## Age of the Building
+
+
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
+ames %>%
+  ggplot(aes(Year_Built)) +
+  geom_bar(color = "black") +
+#  scale_x_continuous() +
+ # scale_x_discrete(breaks = 10)  +
+  labs(title = "Year Built", x = "Year Built", y = "No of Houses") 
+
+```
+## It looks that we have more houses were built at hte begining of 2000
+
+## Condition of the houses
+
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
+ames %>%
+  ggplot(aes(Overall_Cond)) +
+  geom_bar(color = "black") +
+  #  scale_x_continuous() +
+  labs(title = "Overall Condition of the houses", x = "Overall Cond.", y = "No of Houses")
+
+```
+## House condition - most of the houses are of average condition
+
+## Neighborhood and House Price
+
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
+ames %>% ggplot(aes(x = Neighborhood, y = Sale_Price)) +
+  geom_boxplot() +
+  ylab("Sale Price") +
+  xlab("Neighbothood") +
+  theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust=1))
+
+```
+## House Price varies with the neighborhood with few outliers by neighborhood. Also, the median house price by neighborhood is roughly between 200,000 and 400,000. It seems Neighborhood would have some impact on housing price.
+
+
+# Correlation between Sale Price and other variables  
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
+  
+  ames_num <- ames %>% select_if(~is.numeric(.x)) 
+  
+  
+  ames_num %>% ggcorr() +
+              ggplot2::labs(title = "Correlation between Numeric Variables")
+  
+  # Correlation of Sales Price with other numeric variables
+  
+  var_cors <- sapply(ames_num, function(var){
+    var_cor <- cor(ames$Sale_Price,var )
+    return(var_cor)
+  })
+  
+
+  knitr::kable(var_cors,caption = "Ames Housing Dataset - correlated numeric variables with the Sale Price")
+  
+```
+
+## There are some high correlations between variables mostly positive but with some negative. I did further analysis and added pairwise correlation between other numeric valiables and sales price. Thus, I dentified variables which has higher correlations (correlation > 0.5 and < - 0.2) 
+
+## I also looked at some non-numeric variables and their relatins with the Sale Price
+
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
+  # Correlation of Sales Price with other non-numeric variables
+  
+  ames_nonnum <- ames %>% select(where(~!is.numeric(.x) ))
+  
+  
+  var_cors <- sapply(ames_nonnum, function(var){
+    var_cor <- cor(ames$Sale_Price,rank(var) )
+    return(var_cor)
+  })
+  
+  knitr::kable(var_cors,caption = "Ames Housing Dataset - correlated non-numeric variables with the Sale Price")
+
+
+```
+
+## Looking at the non-numeric variable, I identified few variables which are highly correlated - 
+  # MS_Zoning, Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC, 
+  
+#Data Wrangling and Some more visualizations
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
+### Data Wrangling 
+
+########################################################
+
+# Created a variable total_area = First_Flr_SF + Second_Flr_SF + Gr_Liv_Area
+# Exclude Longitude
+
+ames <- ames %>%
+  mutate(TotalArea = First_Flr_SF + Second_Flr_SF + Gr_Liv_Area)
+
+### SalePrice_T -> Sales Price in Thousands
+
+ames <- ames %>%
+  mutate(Sale_Price_T = round(Sale_Price/1000))
+
+ames$Sale_Price_T[is.na(ames$Sale_Price_T)] <- 0
+
+### Total Area
+
+
+ames <- ames %>% select (Sale_Price_T,TotalArea, Year_Built,Overall_Cond, Garage_Cars,Garage_Area,
+                         Total_Bsmt_SF, Year_Remod_Add, Mas_Vnr_Area, MS_Zoning, Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC  )
+
+# Total area
+ames %>% 
+  ggplot(aes(TotalArea)) + 
+  geom_histogram(bins = 25, color = "black") + 
+  #scale_x_log10() + 
+  scale_x_continuous() +
+  labs(title = "Distribution of Area", x = "Area (sqft)", y = "Frequency") +
+  theme_minimal()
+
+
+### Linear 
+# Total Area vs. Price
+ames %>%
+  ggplot(aes(TotalArea,Sale_Price_T)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm") +
+  labs(title = "Total Area vs. Sales Price", x = "Total Area (sqft)", y = "Sale Price ($,000)")
+
+
+
+# Year Built vs. Price
+
+ames %>%
+  ggplot(aes(Year_Built,Sale_Price_T)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm") +
+  labs(title = "Year Built vs. Sales Price", x = "Year Built", y = "Sale Price ($,000)")
+
+
+
+
+# Overall Condition vs. Price
+
+ames %>%
+  ggplot(aes(Overall_Cond,Sale_Price_T)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm")
+
+
+```
+## Create Test Set and Training set for building Linear Models
+# test set will be 20% of housing_data data
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
+set.seed(2023, sample.kind="Rounding")
+test_index <- createDataPartition(y = ames$Sale_Price_T, times = 1,
+                                  p = 0.2, list = FALSE)
+train_set <- ames[-test_index,]
+test_set <- ames[test_index,]
+
+knitr::kable(dim(ames),caption = "Ames Housing Dataset dimension")
+
+knitr::kable(head(ames), caption = "Ames Housing Dataset")
+
+knitr::kable(summary(ames), caption = "Ames Housing Dataset Summary")
+
+```
+## Recommendation System Model - develop, train and test
+# Build Linear Models
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
+RMSE <- function(true_ratings, predicted_ratings){
+  sqrt(mean((true_ratings - predicted_ratings)^2, na.rm = TRUE))
+}
+
+
+# Calculate the overall average rating across all movies included in the training set
+
+mu_hat <- mean(train_set$Sale_Price_T)
+
+
+# Calculate RMSE based on naive model
+naive_rmse <- round(RMSE(test_set$Sale_Price_T, mu_hat),2)
+rmse_results <- tibble(method = "Just the average in ,000", RMSE = naive_rmse)
+cat("\nNaive RMSE in ,000 :",naive_rmse)
+
+# Estimate Area effect (b_a)
+
+
+head(train_set)
+
+model <- train_set %>%
+  #filter(yearID %in% 1961:2001) %>%
+  #mutate(BB = BB/G, HR = HR/G, R = R/G) %>%
+  lm(Sale_Price_T ~ TotalArea , data = .)
+
+y_hat <- predict(model, newdata = test_set)
+
+RMSE(test_set$Sale_Price_T,y_hat)
+
+
+
+# Calculate RMSE based on area effects
+model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+rmse_results <- bind_rows(rmse_results,
+                          tibble(method="Area Effect Model in in ,000",
+                                     RMSE = model_rmse ))
+
+rmse_results %>% knitr::kable()
+
+# Estimate year built effect along with total area  effect
+
+model <- ames %>%
+  #filter(yearID %in% 1961:2001) %>%
+  #mutate(BB = BB/G, HR = HR/G, R = R/G) %>%
+  lm(Sale_Price_T ~ TotalArea + Year_Built + Overall_Cond + Garage_Cars + Garage_Area +
+     Total_Bsmt_SF + Year_Remod_Add +Mas_Vnr_Area, data = .)
+
+y_hat <- predict(model, newdata = test_set)
+
+RMSE(test_set$Sale_Price_T,y_hat)
+
+tidy(model, conf.int = TRUE)
+
+
+# Calculate RMSE based on movie and user effects
+model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+
+rmse_results <- bind_rows(rmse_results,
+                          tibble(method="Area + Year Built Effects Model in ,000",  
+                                     RMSE = model_rmse ))
+rmse_results %>% knitr::kable()
+
+```
+
+## Non-linear Models
+I took the optimum lamda for which the RMSE was the lowest. I built the model and ran the model against the final holdout set to validate the model performance 
+
+Train the final model
+
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
+## K Nearest Neighbor 
+
+train_knn <- train(Sale_Price_T ~ ., method = "knn",
+                   data = train_set,
+                   tuneGrid = data.frame(k = seq(9, 71, 2)))
+
+ggplot(train_knn, highlight = TRUE)
+
+y_hat <- round(predict(train_knn, test_set, type = "raw"))
+
+# Calculate RMSE based on Knn Model
+model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+
+rmse_results <- bind_rows(rmse_results,
+                          tibble(method="Knn Model in ,000",  
+                                 RMSE = model_rmse ))
+rmse_results %>% knitr::kable()
+
+
+
+confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
+
+
+
+# fit a classification tree and plot it
+train_rpart <- train(Sale_Price_T ~ .,
+                     method = "rpart",
+                     tuneGrid = data.frame(cp = seq(0.0, 0.1, len = 25)),
+                     data = train_set)
+plot(train_rpart)
+
+predict(train_rpart, test_set)
+
+y_hat <- round(predict(train_rpart, test_set))
+
+#y_hat <- factor(predict(train_rpart, test_set))
+
+# Calculate RMSE based on Knn Model
+model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+
+rmse_results <- bind_rows(rmse_results,
+                          tibble(method="Knn Model in ,000",  
+                                 RMSE = model_rmse ))
+rmse_results %>% knitr::kable()
+
+confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
+
+
+#######################
+
+
+
+```
+
+## Final Result and improvements over time
+
+RMSEs over Model
+Accuracies of the Models
+
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
+#rmse_results %>% knitr::kable()
+
+```
+
+
+## Conclusion 
+I have used linear model with regularization to build this recommendation system. I came to a reasonable level of accuracy. Linear model is relatively simple to start with but not the best and we realized that during our study. 
+We need more sophisticated models to enhance the accuracy - may be the random forest would be better suited for this prediction. 
+
+## Reference -
+Introduction to Data Science
+
+https://jse.amstat.org/v19n3/decock.pdf - Ames, Iowa: Alternative to the Boston Housing Data as an
+End of Semester Regression Project - Dean De Cock
+
+https://modeldata.tidymodels.org/reference/ames.html - Ames Housing Data
+
+https://www.investopedia.com
+
+
+    mutate(
+      Overall_Qual =
+        dplyr::recode(
+          Overall_Qual,
+          `10` = "Very_Excellent",
+          `9` = "Excellent",
+          `8` = "Very_Good",
+          `7` = "Good",
+          `6` = "Above_Average",
+          `5` = "Average",
+          `4` = "Below_Average",
+          `3` = "Fair",
+          `2` = "Poor",
+          `1` = "Very_Poor"
+        )
+    ) %>%
+
+
+
+
+
