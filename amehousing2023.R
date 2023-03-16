@@ -43,16 +43,19 @@ data(ames)
 # To make graphs more readable disabling scientific notation
 options(scipen = 100)
 
+options(repr.plot.width = 4, repr.plot.height =4)
+
 # Getting the path of your current open file
 current_path = rstudioapi::getActiveDocumentContext()$path 
 setwd(dirname(current_path ))
-#print( getwd() )
 
 
 options(timeout = 120)
 
 
-head(ames)
+#head(ames)
+
+
 
 # Exploratory Data Analysis
 
@@ -84,7 +87,8 @@ ames %>%
                    colour = 1, fill = "black") +
   labs(title = "Distribution of house prices", x = "Price($)", y = "Frequency") +
   geom_density() +
-  theme_minimal()
+  #theme_minimal() +
+  theme_bw(base_size = 15)
 
 # The distribution of SalePrice is right-skewed. Let's check its Skewness and Kurtosis statistics.
 cat("\nSale Price skewness :", skewness(ames$Sale_Price))
@@ -288,7 +292,8 @@ ames %>%
 ## Excluded Overall Condition from the parameter set 
 
 ames <- ames %>% select (Sale_Price_T,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area,
-                         Year_Remod_Add, Mas_Vnr_Area, MS_Zoning, Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC  )
+                         Year_Remod_Add, Mas_Vnr_Area,  Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC, 
+                         MS_Zoning, Neighborhood  )
 
 
 
@@ -426,7 +431,7 @@ summary(train_knn)
 
 ggplot(train_knn, highlight = TRUE)
 
-y_hat <- round(predict(train_knn, test_set, type = "raw"))
+y_hat <- predict(train_knn, test_set, type = "raw")
 
 # Calculate RMSE based on Knn Model
 model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
@@ -449,9 +454,8 @@ train_rpart <- train(Sale_Price_T ~ .,
                      data = train_set)
 plot(train_rpart)
 
-#predict(train_rpart, test_set)
 
-y_hat <- round(predict(train_rpart, test_set))
+y_hat <- predict(train_rpart, test_set)
 
 #y_hat <- factor(predict(train_rpart, test_set))
 
@@ -459,11 +463,11 @@ y_hat <- round(predict(train_rpart, test_set))
 model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
 
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Knn Model in ,000",  
+                          tibble(method="Random Forrest Model in ,000",  
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
-#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
+
 
 
 #######################

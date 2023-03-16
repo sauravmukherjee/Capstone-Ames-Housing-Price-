@@ -74,12 +74,17 @@ setwd(dirname(current_path ))
 
 options(timeout = 120)
 
+options(repr.plot.width = 4, repr.plot.height =4)
+
 ```
 
 
 
-## Exploratory Data Analysis
+# Exploratory Data Analysis
 
+## Explore Ame Dataset - Dimension, Columns and Datatypes
+
+## Explore Sales Price Distribution 
 
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
 ############### Data Exploration and Visualization
@@ -89,7 +94,7 @@ options(scipen = 100)
 
 knitr::kable(dim(ames),caption = "Ames Housing Dataset dimension")
 
-#knitr::kable(colnames(ames),caption = "Ames Housing Dataset Columns")
+knitr::kable(colnames(ames),caption = "Ames Housing Dataset Columns")
 
 knitr::kable(str(ames),caption = "Ames Housing Dataset")
 
@@ -105,13 +110,14 @@ ames %>%
 
 # The distribution of SalePrice is right-skewed. Let's check its Skewness and Kurtosis statistics.
 
-# The distribution of SalePrice is right-skewed. Let's check its Skewness and Kurtosis statistics.
-cat("\nSale Price skewness :", skewness(ames$Sale_Price))
-cat("\nSale Price kurtosis :", kurtosis(ames$Sale_Price))
-
 ```
 ## Sale Price Observation
 The Sale Price is right-skewed 
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
+# The distribution of SalePrice is right-skewed. Let's check its Skewness and Kurtosis statistics.
+cat("\nSale Price skewness :", skewness(ames$Sale_Price))
+cat("\nSale Price kurtosis :", kurtosis(ames$Sale_Price))
+```
 
 ## Age of the Building
 
@@ -125,7 +131,7 @@ ames %>%
   labs(title = "Year Built", x = "Year Built", y = "No of Houses") 
 
 ```
-## It looks that we have more houses were built at the begining of 2000
+It looks that we have more houses were built at the begining of 2000
 
 ## Condition of the houses
 
@@ -141,7 +147,7 @@ ames %>%
 
 ## Neighborhood and House Price
 
-```{r , echo = FALSE, message = FALSE, warning = FALSE}
+```{r , echo = FALSE, message = FALSE, warning = FALSE, fig.align="center", fig.width = 14}
 ames %>% ggplot(aes(x = Neighborhood, y = Sale_Price)) +
   geom_boxplot() +
   ylab("Sale Price") +
@@ -149,10 +155,13 @@ ames %>% ggplot(aes(x = Neighborhood, y = Sale_Price)) +
   theme(axis.text.x = element_text(angle = 75, vjust = 1, hjust=1))
 
 ```
-## House Price varies with the neighborhood with few outliers by neighborhood. Also, the median house price by neighborhood is roughly between 200,000 and 400,000. It seems Neighborhood would have some impact on housing price.
+House Price varies with the neighborhood with few outliers by neighborhood. Also, the median house price by neighborhood is roughly between 200,000 and 400,000. It seems Neighborhood would have some impact on housing price.
 
 
 # Correlation between Sale Price and other variables  
+
+## Correlation between numeric variables
+
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
   
   ames_num <- ames %>% select_if(~is.numeric(.x)) 
@@ -161,6 +170,13 @@ ames %>% ggplot(aes(x = Neighborhood, y = Sale_Price)) +
   ames_num %>% ggcorr() +
               ggplot2::labs(title = "Correlation between Numeric Variables")
   
+
+```
+
+There are some high correlations between variables mostly positive but with some negative. I did further analysis and added pairwise correlation between other numeric variables and sales price. 
+
+## Correlation of Sales Price with other numeric variables
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
   # Correlation of Sales Price with other numeric variables
   
   var_cors <- sapply(ames_num, function(var){
@@ -170,13 +186,14 @@ ames %>% ggplot(aes(x = Neighborhood, y = Sale_Price)) +
   
 
   knitr::kable(var_cors,caption = "Ames Housing Dataset - correlated numeric variables with the Sale Price")
-  
 ```
 
-## There are some high correlations between variables mostly positive but with some negative. I did further analysis and added pairwise correlation between other numeric valiables and sales price. Thus, I dentified variables which has higher correlations (correlation > 0.5 and < - 0.2) 
 
-## I also looked at some non-numeric variables and their relatins with the Sale Price
+Thus, I identified variables which has higher correlations (correlation > 0.5 and < - 0.2) 
 
+I also looked at some non-numeric variables and their relatins with the Sale Price
+
+#### Correlation of Sales Price with non-numeric variables
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
   # Correlation of Sales Price with other non-numeric variables
   
@@ -194,7 +211,7 @@ ames %>% ggplot(aes(x = Neighborhood, y = Sale_Price)) +
 ```
 
 ## Looking at the non-numeric variable, I identified few variables which are highly correlated - 
-  # MS_Zoning, Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC, 
+  MS_Zoning, Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC, 
   
 #Feature Engineering and additional visualizations
 
@@ -294,10 +311,16 @@ ames %>%
 ```
 Looking at the negative correlation between overall condition of the house and sales price I felt that there is something incorrect about the data. I excluded the overall condition from the final parameter set  
 # Create Final Set with Parameters
+## Numeric - 
+Sale_Price_T,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area,
+                         Year_Remod_Add, Mas_Vnr_Area,  
+## Non-Numeric -
+House Attributes - Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC, 
+External Attributes - MS_Zoning, Neighborhood
 
 ```{r}
 ames <- ames %>% select (Sale_Price_T,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area,
-                         Year_Remod_Add, Mas_Vnr_Area, MS_Zoning, Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC  )
+                         Year_Remod_Add, Mas_Vnr_Area,  Lot_Shape, Foundation, Sale_Condition , Garage_Finish,    House_Style, Heating_QC, MS_Zoning, Neighborhood  )
 
 ```
 
@@ -319,8 +342,11 @@ knitr::kable(head(ames), caption = "Ames Housing Dataset")
 knitr::kable(summary(ames), caption = "Ames Housing Dataset Summary")
 
 ```
-## Recommendation System Model - develop, train and test
-# Build Linear Models
+# Recommendation System Model - develop, train and test
+## Build Linear Models
+I started with linear model and some selected set of parameters/attributes and evaluated the performaces of the models use RMSE.
+In the first Linear Model we used "Age of the House" and "Total Bathroom"
+I enhanced the model and added "Age of the House", Garage_Cars + Garage_Area + Year_Remod_Add + Mas_Vnr_Area
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
 RMSE <- function(true_ratings, predicted_ratings){
   sqrt(mean((true_ratings - predicted_ratings)^2, na.rm = TRUE))
@@ -388,11 +414,11 @@ rmse_results <- bind_rows(rmse_results,
 rmse_results %>% knitr::kable()
 
 ```
+With linear model and with a set of attributes I was able to tune the model and reduce RMSE.
 
-## Non-linear Models
-I took the optimum lamda for which the RMSE was the lowest. I built the model and ran the model against the final holdout set to validate the model performance 
-
-Train the final model
+# Non-linear Models
+I wanted to further tune the model and enhance the accuracy. I planned to use "Knn" and "Random Forest". I added the non-linear parameters with the liner ones. Some of the non-linear ones are attributes of the house and some are external 
+External attributes - Zoning and Neighborhood
 
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
 ## K Nearest Neighbor 
@@ -448,6 +474,10 @@ rmse_results %>% knitr::kable()
 
 
 ```
+I got the best result when I used the Random Forrest. I wanted to use the Confusion Matrix to calculate the accuracy for in the case of Knn and Random Forrest. But because Sale Price is a continuous variable, I could not use Confusion Matrix function directly. When I converted Sale Price ( both predicted and original) into factor, I got extremely low accuracy. After doing further research I found out that this is not a ideal situation to use Confusion Matrix to calculate the accruracy.
+
+I am sure doing some additional Feature Engineering and combining more than one models I will be able to build a better House Prediction Model.  
+
 
 # Final Result and improvements over time
 
@@ -461,11 +491,22 @@ rmse_results %>% knitr::kable()
 
 
 # Conclusion 
-I have used linear model with regularization to build this recommendation system. I came to a reasonable level of accuracy. Linear model is relatively simple to start with but not the best and we realized that during our study. 
-We need more sophisticated models to enhance the accuracy - may be the random forest would be better suited for this prediction. 
+To build the House Price Prediction model I started with building Linear model with a set of numeric variables. I identified those variables by observing strong correlation with the "Sale Price"
+## Parameters used in the Linear Model 
+Sale_Price_T,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area, Year_Remod_Add,  Mas_Vnr_Area
+I used RMSE to calculate the efficiency 
+
+Next to reduce th error margin , I looked at two other Models Knn and Random Forest. I identified some non-numeric attributes looking at their correlation with the Sale Price 
+## Non-Numeric -
+House Attributes - Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC, 
+External Attributes - MS_Zoning, Neighborhood
+
+Finally with Random Forest Model I got the lowest RMSE. 
+
+
 
 # Reference -
-Introduction to Data Science
+Introduction to Data Science by Rafael A. Irizarry
 
 https://jse.amstat.org/v19n3/decock.pdf - Ames, Iowa: Alternative to the Boston Housing Data as an
 End of Semester Regression Project - Dean De Cock
