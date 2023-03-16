@@ -17,7 +17,7 @@ if(!require(broom)) install.packages("broom", repos = "http://cran.us.r-project.
 if(!require(modeldata)) install.packages("modeldata", repos = "http://cran.us.r-project.org")
 if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
 if(!require(moments)) install.packages("moments", repos = "http://cran.us.r-project.org")
-if(!require(corrr)) install.packages("corrr", repos = "http://cran.us.r-project.org")
+#if(!require(corrr)) install.packages("corrr", repos = "http://cran.us.r-project.org")
 #if(!require(tidymodels)) install.packages("tidymodels", repos = "http://cran.us.r-project.org")
 #if(!require(lares)) install.packages("lares", repos = "http://cran.us.r-project.org")
 if(!require(GGally)) install.packages("GGally", repos = "http://cran.us.r-project.org")
@@ -34,27 +34,41 @@ library(modeldata)
 library(ggplot2)
 library(moments)
 library(GGally)
-library(corrr)
+#library(corrr)
 
 
 # Load ames Dataset
 data(ames)
 
+# To make graphs more readable disabling scientific notation
+options(scipen = 100)
+
+# Getting the path of your current open file
+current_path = rstudioapi::getActiveDocumentContext()$path 
+setwd(dirname(current_path ))
+#print( getwd() )
+
+
+options(timeout = 120)
+
+
+head(ames)
+
 # Exploratory Data Analysis
 
 knitr::kable(dim(ames),caption = "Ames Housing Dataset dimension")
 
-#knitr::kable(colnames(ames),caption = "Ames Housing Dataset Columns")
+knitr::kable(colnames(ames),caption = "Ames Housing Dataset Columns")
 
 knitr::kable(str(ames),caption = "Ames Housing Dataset")
 
 #knitr::kable(summary(ames),caption = "Ames Housing Dataset")
 
-# Sale Price Characteristics 
+
 ############### Data Exploration and Visualization
 
-# To make graphs more readable disabling scientific notation
-options(scipen = 100)
+
+
 
 knitr::kable(dim(ames),caption = "Ames Housing Dataset dimension")
 
@@ -149,17 +163,6 @@ ames %>% ggplot(aes(x = Neighborhood, y = Sale_Price)) +
 
 
 
-# Getting the path of your current open file
-current_path = rstudioapi::getActiveDocumentContext()$path 
-setwd(dirname(current_path ))
-#print( getwd() )
-
-
-options(timeout = 120)
-
-
-
-
 #unique(ames$Overall_Cond)
 
 #as.numeric(unique(ames$Overall_Cond))
@@ -185,15 +188,33 @@ options(timeout = 120)
 
 summarise(ames)
 
-### Data Wrangling 
+### Feature Engineering
 
 ########################################################
 
-# Created a variable total_area = First_Flr_SF + Second_Flr_SF + Gr_Liv_Area
-# Exclude Longitude
+# Created a variable total_area = First_Flr_SF + Second_Flr_SF + Total_Bsmt_SF 
+
 
 ames <- ames %>%
-  mutate(TotalArea = First_Flr_SF + Second_Flr_SF + Gr_Liv_Area)
+  mutate(total_Area = First_Flr_SF + Second_Flr_SF + Total_Bsmt_SF )
+
+
+cat("\nCorelation between Total Area and Sale Price :", cor(ames$total_Area,ames$Sale_Price))
+
+
+# Total_Bathroom considering full bath and half bath
+ames <- ames %>%
+  mutate(total_Bathroom =  Full_Bath + Bsmt_Full_Bath + 0.5* Half_Bath+ 0.5 * Bsmt_Half_Bath)
+
+cat("\nCorelation between Total Bathroom and Sale Price :", cor(ames$total_Bathroom,ames$Sale_Price))
+
+# Age of the house 
+ames <- ames %>%
+  mutate(house_Age =  Year_Sold - Year_Built)
+
+cat("\nCorelation between Age of House and Sale Price :",  cor(ames$house_Age,ames$Sale_Price))
+
+#X['reModeled'] = np.where(X.YearRemodAdd == X.YearBuilt, 0, 1)
 
 ### SalePrice_T -> Sales Price in Thousands
 
@@ -203,28 +224,30 @@ ames <- ames %>%
 ames$Sale_Price_T[is.na(ames$Sale_Price_T)] <- 0
 
 ### Overall Condition
-# 5 6 7 2 8 4 9 3 1
-# unique(ames$Overall_Cond)
-#[1] Average       Above_Average Good          Poor          Very_Good     Below_Average Excellent     Fair         
-#[9] Very_Poor    
 #Levels: Very_Poor Poor Fair Below_Average Average Above_Average Good Very_Good Excellent Very_Excellent
 
 ames <- ames %>%
-  mutate(Overall_Cond_n = as.numeric(Overall_Cond)) 
+  mutate(Overall_Cond_n = dplyr::recode(
+    Overall_Cond,
+    "Very_Excellent" = 10,
+    "Excellent" = 9,
+    "Very_Good" = 8,
+    "Good" = 7,
+    "Above_Average" = 6,
+    "Average" = 5,
+    "Below_Average" =4,
+    "Fair" = 3,
+    "Poor" = 2,
+    "Very_Poor" =1
+  )) 
 
-
-
-      
-
-
-ames <- ames %>% select (Sale_Price_T,TotalArea, Year_Built,Overall_Cond_n,Garage_Cars,Garage_Area,
-                         Total_Bsmt_SF, Year_Remod_Add, Mas_Vnr_Area, MS_Zoning, Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC  )
+cat("\nCorelation between Overall Condition and Sale Price :", cor(ames$Sale_Price,ames$Overall_Cond_n))
 
 
 
 # Total area
 ames %>% 
-  ggplot(aes(TotalArea)) + 
+  ggplot(aes(total_Area)) + 
   geom_histogram(bins = 25, color = "black") + 
   #scale_x_log10() + 
   scale_x_continuous() +
@@ -235,20 +258,19 @@ ames %>%
 ### Linear 
 # Total Area vs. Price
 ames %>%
-  ggplot(aes(TotalArea,Sale_Price_T)) +
+  ggplot(aes(total_Area,Sale_Price_T)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
   labs(title = "Total Area vs. Sales Price", x = "Total Area (sqft)", y = "Sale Price ($,000)")
 
 
-# Year Built vs. Price
+# Age of the House vs. Price
 
 ames %>%
-  ggplot(aes(Year_Built,Sale_Price_T)) +
+  ggplot(aes(house_Age ,Sale_Price_T)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
-  labs(title = "Year Built vs. Sales Price", x = "Year Built", y = "Sale Price ($,000)")
-
+  labs(title = "Age of the house vs. Sales Price", x = "Age", y = "Sale Price ($,000)")
 
 
 
@@ -260,9 +282,18 @@ ames %>%
   geom_smooth(method = "lm") +
   labs(title = "Overall Condition vs. Sales Price", x = "Overall Condition", y = "Sale Price ($,000)")
 
-cor(ames$Sale_Price_T,ames$Overall_Cond_n)
 
 
+
+## Excluded Overall Condition from the parameter set 
+
+ames <- ames %>% select (Sale_Price_T,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area,
+                         Year_Remod_Add, Mas_Vnr_Area, MS_Zoning, Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC  )
+
+
+
+# Let's see the correlation matrix
+ggcorr(ames, size = 3, label = TRUE, label_size = 4, label_round = 2, label_alpha = TRUE)
 
 ## "SalePrice"
 
@@ -330,50 +361,53 @@ naive_rmse <- round(RMSE(test_set$Sale_Price_T, mu_hat),2)
 rmse_results <- tibble(method = "Just the average in ,000", RMSE = naive_rmse)
 cat("\nNaive RMSE in ,000 :",naive_rmse)
 
-# Estimate Area effect (b_a)
+# Linear Model Sale Price ~ total area + total bathroom 
 
 
-head(train_set)
+#head(train_set)
 
-model <- train_set %>%
+model_ln1 <- train_set %>%
   #filter(yearID %in% 1961:2001) %>%
   #mutate(BB = BB/G, HR = HR/G, R = R/G) %>%
-  lm(Sale_Price_T ~ TotalArea , data = .)
+  lm(Sale_Price_T ~ total_Area + total_Bathroom , data = .)
 
-y_hat <- predict(model, newdata = test_set)
+y_hat <- predict(model_ln1, newdata = test_set)
 
-RMSE(test_set$Sale_Price_T,y_hat)
+#RMSE(test_set$Sale_Price_T,y_hat)
 
+summary(model_ln1)
 
 
 # Calculate RMSE based on area effects
 model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Area Effect Model in in ,000",
+                          tibble(method="Total Area and Total Bathroom Effect Model in in ,000",
                                      RMSE = model_rmse ))
 
 rmse_results %>% knitr::kable()
 
-# Estimate year built effect along with total area  effect
+# Estimate age of house effect along with total area  effect
 
-model <- ames %>%
+model_ln2 <- ames %>%
   #filter(yearID %in% 1961:2001) %>%
-  #mutate(BB = BB/G, HR = HR/G, R = R/G) %>%
-  lm(Sale_Price_T ~ TotalArea + Year_Built + Overall_Cond + Garage_Cars + Garage_Area +
-     Total_Bsmt_SF + Year_Remod_Add +Mas_Vnr_Area, data = .)
+  lm(Sale_Price_T ~ total_Area +total_Bathroom + house_Age + Garage_Cars + Garage_Area +
+     Year_Remod_Add +Mas_Vnr_Area, data = .)
 
-y_hat <- predict(model, newdata = test_set)
+y_hat <- predict(model_ln2, newdata = test_set)
 
 RMSE(test_set$Sale_Price_T,y_hat)
 
-tidy(model, conf.int = TRUE)
+
+tidy(model_ln2, conf.int = TRUE)
+
+summary(model_ln2)
 
 
-# Calculate RMSE based on movie and user effects
+# Calculate RMSE based on numeric attributes
 model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
 
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Area + Year Built Effects Model in ,000",  
+                          tibble(method="Model based on Numeric attributes of the dataset in ,000",  
                                      RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
@@ -382,9 +416,13 @@ rmse_results %>% knitr::kable()
 
 ## K Nearest Neighbor 
 
+
+
 train_knn <- train(Sale_Price_T ~ ., method = "knn",
                    data = train_set,
                    tuneGrid = data.frame(k = seq(9, 71, 2)))
+
+summary(train_knn)
 
 ggplot(train_knn, highlight = TRUE)
 
@@ -398,10 +436,10 @@ rmse_results <- bind_rows(rmse_results,
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
+#head(y_hat)
+#head(test_set$Sale_Price_T)
 
-
-confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
-
+#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
 
 
 # fit a classification tree and plot it
@@ -411,7 +449,7 @@ train_rpart <- train(Sale_Price_T ~ .,
                      data = train_set)
 plot(train_rpart)
 
-predict(train_rpart, test_set)
+#predict(train_rpart, test_set)
 
 y_hat <- round(predict(train_rpart, test_set))
 
@@ -425,8 +463,7 @@ rmse_results <- bind_rows(rmse_results,
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
-confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
+#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
 
 
 #######################
-

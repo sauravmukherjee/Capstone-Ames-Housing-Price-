@@ -12,7 +12,7 @@ output:
 
 ```
 
-## Introduction
+# Introduction
 
 I am building home price prediction model. I am using Ames Housing dataset to explore the attributes which have been identified somehow influencing the housing cost.
 
@@ -22,14 +22,15 @@ values. Howvever, I looked at a dataset which is a subset of this dataset and wh
 I did some research and looked at the model - Hedonic Pricing Method to predict the house price. The Hedonic Pricing Method talks about internal characteristics as well as the external factors affecting the price of a good. Based on the idea of hedonic price modeling I am looking the is that neighborhood-specific and unit-specific characteristics help determine house prices.
 
 
-Data - Ames Housing Data
+##Data - Ames Housing Data
 
 A data set from De Cock (2011) has 82 fields were recorded for 2,930 properties in Ames IA. I used a version from the package modeldata dataset name as ames which is copies from the original AmesHousing package but does not include a few quality columns that appear to be outcomes rather than predictors.
 
 
-##########################################################
-# Load required Libraries
-# Load ames dataset
+##Load required Libraries
+## Load ames dataset
+## Setup environments
+
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE, eval = TRUE}
 
@@ -63,7 +64,18 @@ library(corrr)
 
 # Load ames Dataset
 data(ames)
+
+# To make graphs more readable disabling scientific notation
+options(scipen = 100)
+
+# Getting the path of your current open file
+current_path = rstudioapi::getActiveDocumentContext()$path 
+setwd(dirname(current_path ))
+
+options(timeout = 120)
+
 ```
+
 
 
 ## Exploratory Data Analysis
@@ -113,7 +125,7 @@ ames %>%
   labs(title = "Year Built", x = "Year Built", y = "No of Houses") 
 
 ```
-## It looks that we have more houses were built at hte begining of 2000
+## It looks that we have more houses were built at the begining of 2000
 
 ## Condition of the houses
 
@@ -184,17 +196,34 @@ ames %>% ggplot(aes(x = Neighborhood, y = Sale_Price)) +
 ## Looking at the non-numeric variable, I identified few variables which are highly correlated - 
   # MS_Zoning, Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC, 
   
-#Data Wrangling and Some more visualizations
+#Feature Engineering and additional visualizations
+
+## Created a variable total_area = First_Flr_SF + Second_Flr_SF + Total_Bsmt_SF 
+## Created a variable total_Bathroom = Full_Bath + Bsmt_Full_Bath + 0.5* Half_Bath+ 0.5 * Bsmt_Half_Bath 
+## Created a variable sales_price_T = sale_Price_T
+## Created a variable orarall_Condition_n a numeric representation of overall_Condition
+## Created a variable house_Age = year_Sold - year_Build
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
-### Data Wrangling 
-
-########################################################
-
-# Created a variable total_area = First_Flr_SF + Second_Flr_SF + Gr_Liv_Area
-# Exclude Longitude
-
 ames <- ames %>%
-  mutate(TotalArea = First_Flr_SF + Second_Flr_SF + Gr_Liv_Area)
+  mutate(total_Area = First_Flr_SF + Second_Flr_SF + Total_Bsmt_SF )
+
+
+cat("\nCorelation between Total Area and Sale Price :", cor(ames$total_Area,ames$Sale_Price))
+
+
+# Total_Bathroom considering full bath and half bath
+ames <- ames %>%
+  mutate(total_Bathroom =  Full_Bath + Bsmt_Full_Bath + 0.5* Half_Bath+ 0.5 * Bsmt_Half_Bath)
+
+cat("\nCorelation between Total Bathroom and Sale Price :", cor(ames$total_Bathroom,ames$Sale_Price))
+
+# Age of the house 
+ames <- ames %>%
+  mutate(house_Age =  Year_Sold - Year_Built)
+
+cat("\nCorelation between Age of House and Sale Price :",  cor(ames$house_Age,ames$Sale_Price))
+
+#X['reModeled'] = np.where(X.YearRemodAdd == X.YearBuilt, 0, 1)
 
 ### SalePrice_T -> Sales Price in Thousands
 
@@ -203,15 +232,31 @@ ames <- ames %>%
 
 ames$Sale_Price_T[is.na(ames$Sale_Price_T)] <- 0
 
-### Total Area
+### Overall Condition
+#Levels: Very_Poor Poor Fair Below_Average Average Above_Average Good Very_Good Excellent Very_Excellent
+
+ames <- ames %>%
+  mutate(Overall_Cond_n = dplyr::recode(
+    Overall_Cond,
+    "Very_Excellent" = 10,
+    "Excellent" = 9,
+    "Very_Good" = 8,
+    "Good" = 7,
+    "Above_Average" = 6,
+    "Average" = 5,
+    "Below_Average" =4,
+    "Fair" = 3,
+    "Poor" = 2,
+    "Very_Poor" =1
+  )) 
+
+cat("\nCorelation between Overall Condition and Sale Price :", cor(ames$Sale_Price,ames$Overall_Cond_n))
 
 
-ames <- ames %>% select (Sale_Price_T,TotalArea, Year_Built,Overall_Cond, Garage_Cars,Garage_Area,
-                         Total_Bsmt_SF, Year_Remod_Add, Mas_Vnr_Area, MS_Zoning, Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC  )
 
 # Total area
 ames %>% 
-  ggplot(aes(TotalArea)) + 
+  ggplot(aes(total_Area)) + 
   geom_histogram(bins = 25, color = "black") + 
   #scale_x_log10() + 
   scale_x_continuous() +
@@ -222,33 +267,42 @@ ames %>%
 ### Linear 
 # Total Area vs. Price
 ames %>%
-  ggplot(aes(TotalArea,Sale_Price_T)) +
+  ggplot(aes(total_Area,Sale_Price_T)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
   labs(title = "Total Area vs. Sales Price", x = "Total Area (sqft)", y = "Sale Price ($,000)")
 
 
-
-# Year Built vs. Price
+# Age of the House vs. Price
 
 ames %>%
-  ggplot(aes(Year_Built,Sale_Price_T)) +
+  ggplot(aes(house_Age ,Sale_Price_T)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
-  labs(title = "Year Built vs. Sales Price", x = "Year Built", y = "Sale Price ($,000)")
-
+  labs(title = "Age of the house vs. Sales Price", x = "Age", y = "Sale Price ($,000)")
 
 
 
 # Overall Condition vs. Price
 
 ames %>%
-  ggplot(aes(Overall_Cond,Sale_Price_T)) +
+  ggplot(aes(Overall_Cond_n,Sale_Price_T)) +
   geom_point(alpha = 0.5) +
-  geom_smooth(method = "lm")
-
+  geom_smooth(method = "lm") +
+  labs(title = "Overall Condition vs. Sales Price", x = "Overall Condition", y = "Sale Price ($,000)")
 
 ```
+Looking at the negative correlation between overall condition of the house and sales price I felt that there is something incorrect about the data. I excluded the overall condition from the final parameter set  
+# Create Final Set with Parameters
+
+```{r}
+ames <- ames %>% select (Sale_Price_T,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area,
+                         Year_Remod_Add, Mas_Vnr_Area, MS_Zoning, Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC  )
+
+```
+
+
+
 ## Create Test Set and Training set for building Linear Models
 # test set will be 20% of housing_data data
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
@@ -283,50 +337,53 @@ naive_rmse <- round(RMSE(test_set$Sale_Price_T, mu_hat),2)
 rmse_results <- tibble(method = "Just the average in ,000", RMSE = naive_rmse)
 cat("\nNaive RMSE in ,000 :",naive_rmse)
 
-# Estimate Area effect (b_a)
+# Linear Model Sale Price ~ total area + total bathroom 
 
 
-head(train_set)
+#head(train_set)
 
-model <- train_set %>%
+model_ln1 <- train_set %>%
   #filter(yearID %in% 1961:2001) %>%
   #mutate(BB = BB/G, HR = HR/G, R = R/G) %>%
-  lm(Sale_Price_T ~ TotalArea , data = .)
+  lm(Sale_Price_T ~ total_Area + total_Bathroom , data = .)
 
-y_hat <- predict(model, newdata = test_set)
+y_hat <- predict(model_ln1, newdata = test_set)
 
-RMSE(test_set$Sale_Price_T,y_hat)
+#RMSE(test_set$Sale_Price_T,y_hat)
 
+summary(model_ln1)
 
 
 # Calculate RMSE based on area effects
 model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Area Effect Model in in ,000",
+                          tibble(method="Total Area and Total Bathroom Effect Model in in ,000",
                                      RMSE = model_rmse ))
 
 rmse_results %>% knitr::kable()
 
-# Estimate year built effect along with total area  effect
+# Estimate age of house effect along with total area  effect
 
-model <- ames %>%
+model_ln2 <- ames %>%
   #filter(yearID %in% 1961:2001) %>%
-  #mutate(BB = BB/G, HR = HR/G, R = R/G) %>%
-  lm(Sale_Price_T ~ TotalArea + Year_Built + Overall_Cond + Garage_Cars + Garage_Area +
-     Total_Bsmt_SF + Year_Remod_Add +Mas_Vnr_Area, data = .)
+  lm(Sale_Price_T ~ total_Area +total_Bathroom + house_Age + Garage_Cars + Garage_Area +
+     Year_Remod_Add +Mas_Vnr_Area, data = .)
 
-y_hat <- predict(model, newdata = test_set)
+y_hat <- predict(model_ln2, newdata = test_set)
 
 RMSE(test_set$Sale_Price_T,y_hat)
 
-tidy(model, conf.int = TRUE)
+
+tidy(model_ln2, conf.int = TRUE)
+
+summary(model_ln2)
 
 
-# Calculate RMSE based on movie and user effects
+# Calculate RMSE based on numeric attributes
 model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
 
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Area + Year Built Effects Model in ,000",  
+                          tibble(method="Model based on Numeric attributes of the dataset in ,000",  
                                      RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
@@ -340,9 +397,15 @@ Train the final model
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
 ## K Nearest Neighbor 
 
+## K Nearest Neighbor 
+
+
+
 train_knn <- train(Sale_Price_T ~ ., method = "knn",
                    data = train_set,
                    tuneGrid = data.frame(k = seq(9, 71, 2)))
+
+summary(train_knn)
 
 ggplot(train_knn, highlight = TRUE)
 
@@ -356,10 +419,10 @@ rmse_results <- bind_rows(rmse_results,
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
+#head(y_hat)
+#head(test_set$Sale_Price_T)
 
-
-confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
-
+#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
 
 
 # fit a classification tree and plot it
@@ -369,7 +432,7 @@ train_rpart <- train(Sale_Price_T ~ .,
                      data = train_set)
 plot(train_rpart)
 
-predict(train_rpart, test_set)
+#predict(train_rpart, test_set)
 
 y_hat <- round(predict(train_rpart, test_set))
 
@@ -379,35 +442,29 @@ y_hat <- round(predict(train_rpart, test_set))
 model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
 
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Knn Model in ,000",  
+                          tibble(method="Random Forrest Model in ,000",  
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
-confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
-
-
-#######################
-
-
 
 ```
 
-## Final Result and improvements over time
+# Final Result and improvements over time
 
 RMSEs over Model
-Accuracies of the Models
+
 
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
-#rmse_results %>% knitr::kable()
+rmse_results %>% knitr::kable()
 
 ```
 
 
-## Conclusion 
+# Conclusion 
 I have used linear model with regularization to build this recommendation system. I came to a reasonable level of accuracy. Linear model is relatively simple to start with but not the best and we realized that during our study. 
 We need more sophisticated models to enhance the accuracy - may be the random forest would be better suited for this prediction. 
 
-## Reference -
+# Reference -
 Introduction to Data Science
 
 https://jse.amstat.org/v19n3/decock.pdf - Ames, Iowa: Alternative to the Boston Housing Data as an
@@ -416,24 +473,6 @@ End of Semester Regression Project - Dean De Cock
 https://modeldata.tidymodels.org/reference/ames.html - Ames Housing Data
 
 https://www.investopedia.com
-
-
-    mutate(
-      Overall_Qual =
-        dplyr::recode(
-          Overall_Qual,
-          `10` = "Very_Excellent",
-          `9` = "Excellent",
-          `8` = "Very_Good",
-          `7` = "Good",
-          `6` = "Above_Average",
-          `5` = "Average",
-          `4` = "Below_Average",
-          `3` = "Fair",
-          `2` = "Poor",
-          `1` = "Very_Poor"
-        )
-    ) %>%
 
 
 
