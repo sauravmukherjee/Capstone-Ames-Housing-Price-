@@ -21,6 +21,7 @@ if(!require(moments)) install.packages("moments", repos = "http://cran.us.r-proj
 #if(!require(tidymodels)) install.packages("tidymodels", repos = "http://cran.us.r-project.org")
 #if(!require(lares)) install.packages("lares", repos = "http://cran.us.r-project.org")
 if(!require(GGally)) install.packages("GGally", repos = "http://cran.us.r-project.org")
+if(!require(randomForest)) install.packages("randomForest", repos = "http://cran.us.r-project.org")
 
 
 library(tidyverse)
@@ -35,6 +36,7 @@ library(ggplot2)
 library(moments)
 library(GGally)
 #library(corrr)
+library(randomForest)
 
 
 # Load ames Dataset
@@ -171,23 +173,6 @@ ames %>% ggplot(aes(x = Neighborhood, y = Sale_Price)) +
 
 #as.numeric(unique(ames$Overall_Cond))
 
-  
-
-  
-#  housing <- housing %>%
-#    mutate(TotalArea = as.integer(X1stFlrSF),
-#           price = as.numeric(SalePrice))
-  
-  
-
-  
-
-  
-#housing <- housing %>%
-  #  mutate(Year.Built = as.integer(Year.Built),
-  #         TotalArea = as.integer(TotalArea),
-  #         SalePrice = as.numeric(SalePrice))
-  
 
 
 summarise(ames)
@@ -332,19 +317,12 @@ knitr::kable(head(ames), caption = "Ames Housing Dataset")
 
 knitr::kable(summary(ames), caption = "Ames Housing Dataset Summary") 
 
-#distinct_Housing <- housing_data %>% summarize(n_users = n_distinct(userId),
-#                              n_movies = n_distinct(movieId), n_genres = n_distinct(genres))
 
-#knitr::kable(distinct_Housing, "pandoc", caption = "Unique users, movies, and genres")
-
-
-
- 
 
 
 
 ###########################################################################################################################
-# Recommendation System Model - develop, train and test
+# House Price Prediction Model - develop, train and test
 ###########################################################################################################################
 
 
@@ -441,8 +419,6 @@ rmse_results <- bind_rows(rmse_results,
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
-#head(y_hat)
-#head(test_set$Sale_Price_T)
 
 #confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
 
@@ -463,11 +439,36 @@ y_hat <- predict(train_rpart, test_set)
 model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
 
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Random Forrest Model in ,000",  
+                          tibble(method="Classification and regression trees (CART) Model in ,000",  
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
+
+#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
 
 
 
 
 #######################
+
+# Random Forrest
+
+train_rf <- randomForest(Sale_Price_T ~ ., data=train_set)
+
+
+plot(train_rf)
+
+
+y_hat <- predict(train_rf, test_set)
+
+# Calculate RMSE based on Random Forrest Model
+model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+
+rmse_results <- bind_rows(rmse_results,
+                          tibble(method="Random Forrest in ,000",  
+                                 RMSE = model_rmse ))
+rmse_results %>% knitr::kable()
+
+#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
+
+#Models and Performances 
+rmse_results %>% knitr::kable()

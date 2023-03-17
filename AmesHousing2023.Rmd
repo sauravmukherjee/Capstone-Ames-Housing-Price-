@@ -48,6 +48,7 @@ if(!require(corrr)) install.packages("corrr", repos = "http://cran.us.r-project.
 #if(!require(tidymodels)) install.packages("tidymodels", repos = "http://cran.us.r-project.org")
 #if(!require(lares)) install.packages("lares", repos = "http://cran.us.r-project.org")
 if(!require(GGally)) install.packages("GGally", repos = "http://cran.us.r-project.org")
+if(!require(randomForest)) install.packages("randomForest", repos = "http://cran.us.r-project.org")
 
 library(tidyverse)
 library(caret)
@@ -61,6 +62,7 @@ library(ggplot2)
 library(moments)
 library(GGally)
 library(corrr)
+library(randomForest)
 
 # Load ames Dataset
 data(ames)
@@ -342,7 +344,10 @@ knitr::kable(head(ames), caption = "Ames Housing Dataset")
 knitr::kable(summary(ames), caption = "Ames Housing Dataset Summary")
 
 ```
-# Recommendation System Model - develop, train and test
+# House Price Prediction Model - develop, train and test
+
+#Average House Price
+
 ## Build Linear Models
 I started with linear model and some selected set of parameters/attributes and evaluated the performaces of the models use RMSE.
 In the first Linear Model we used "Age of the House" and "Total Bathroom"
@@ -417,14 +422,13 @@ rmse_results %>% knitr::kable()
 With linear model and with a set of attributes I was able to tune the model and reduce RMSE.
 
 # Non-linear Models
-I wanted to further tune the model and enhance the accuracy. I planned to use "Knn" and "Random Forest". I added the non-linear parameters with the liner ones. Some of the non-linear ones are attributes of the house and some are external 
+I wanted to further tune the model and enhance the accuracy. I planned to use "kNN", "Classification and regression trees (CART)" and Random Forrest. I added the non-linear parameters with the linear ones. Some of the non-linear ones are attributes of the house and some are external 
 External attributes - Zoning and Neighborhood
+
+## k Nearest Neighbor (kNN) Model
 
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
 ## K Nearest Neighbor 
-
-## K Nearest Neighbor 
-
 
 
 train_knn <- train(Sale_Price_T ~ ., method = "knn",
@@ -445,11 +449,15 @@ rmse_results <- bind_rows(rmse_results,
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
-#head(y_hat)
-#head(test_set$Sale_Price_T)
 
 #confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
 
+
+```
+Next I am using Classification and regression trees (CART) model to see whether it reduces the RMSE value
+# Using Model - Classification and regression trees (CART)
+
+```{r}
 
 # fit a classification tree and plot it
 train_rpart <- train(Sale_Price_T ~ .,
@@ -462,21 +470,46 @@ plot(train_rpart)
 
 y_hat <- round(predict(train_rpart, test_set))
 
-#y_hat <- factor(predict(train_rpart, test_set))
 
-# Calculate RMSE based on Knn Model
+# Calculate RMSE based on Classification and regression trees (CART)
 model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
 
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Random Forrest Model in ,000",  
+                          tibble(method="Classification and regression trees (CART) Model in ,000",  
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
 
-```
-I got the best result when I used the Random Forrest. I wanted to use the Confusion Matrix to calculate the accuracy for in the case of Knn and Random Forrest. But because Sale Price is a continuous variable, I could not use Confusion Matrix function directly. When I converted Sale Price ( both predicted and original) into factor, I got extremely low accuracy. After doing further research I found out that this is not a ideal situation to use Confusion Matrix to calculate the accruracy.
 
-I am sure doing some additional Feature Engineering and combining more than one models I will be able to build a better House Prediction Model.  
+```
+
+#Random Forrest -
+
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
+# Random Forrest
+
+train_rf <- randomForest(Sale_Price_T ~ ., data=train_set)
+
+
+plot(train_rf)
+
+
+y_hat <- predict(train_rf, test_set)
+
+# Calculate RMSE based on Random Forrest Model
+model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+
+rmse_results <- bind_rows(rmse_results,
+                          tibble(method="Random Forrest in ,000",  
+                                 RMSE = model_rmse ))
+rmse_results %>% knitr::kable()
+
+#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
+```
+
+
+
+I got the best result when I used the Classification and regression trees (CART). I wanted to use the Confusion Matrix to calculate the accuracy for in the case of kNN and Classification and regression trees (CART). But because Sale Price is a continuous variable, I could not use Confusion Matrix function directly. When I converted Sale Price ( both predicted and original) into factor, I got extremely low accuracy. After doing further research I found out that this is not a ideal situation to use Confusion Matrix to calculate the accuracy.
 
 
 # Final Result and improvements over time
@@ -496,12 +529,14 @@ To build the House Price Prediction model I started with building Linear model w
 Sale_Price_T,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area, Year_Remod_Add,  Mas_Vnr_Area
 I used RMSE to calculate the efficiency 
 
-Next to reduce th error margin , I looked at two other Models Knn and Random Forest. I identified some non-numeric attributes looking at their correlation with the Sale Price 
+Next to reduce th error margin , I looked at three other Models kNN, Classification and regression trees (CART) and Random Forrest. I identified some non-numeric attributes looking at their correlation with the Sale Price 
 ## Non-Numeric -
 House Attributes - Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC, 
 External Attributes - MS_Zoning, Neighborhood
 
-Finally with Random Forest Model I got the lowest RMSE. 
+Finally with Random Forrest Model I got the lowest RMSE. 
+
+I am sure doing some additional Feature Engineering and combining more than one models I will be able to build a better House Prediction Model.  
 
 
 
