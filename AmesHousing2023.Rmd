@@ -22,12 +22,12 @@ values. Howvever, I looked at a dataset which is a subset of this dataset and wh
 I did some research and looked at the model - Hedonic Pricing Method to predict the house price. The Hedonic Pricing Method talks about internal characteristics as well as the external factors affecting the price of a good. Based on the idea of hedonic price modeling I am looking the is that neighborhood-specific and unit-specific characteristics help determine house prices.
 
 
-##Data - Ames Housing Data
+## Data - Ames Housing Data
 
 A data set from De Cock (2011) has 82 fields were recorded for 2,930 properties in Ames IA. I used a version from the package modeldata dataset name as ames which is copies from the original AmesHousing package but does not include a few quality columns that appear to be outcomes rather than predictors.
 
 
-##Load required Libraries
+## Load required Libraries
 ## Load ames dataset
 ## Setup environments
 
@@ -72,7 +72,7 @@ options(scipen = 100)
 
 # Getting the path of your current open file
 current_path = rstudioapi::getActiveDocumentContext()$path 
-setwd(dirname(current_path ))
+#setwd(dirname(current_path ))
 
 options(timeout = 120)
 
@@ -91,12 +91,11 @@ options(repr.plot.width = 4, repr.plot.height =4)
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
 ############### Data Exploration and Visualization
 
-# To make graphs more readable disabling scientific notation
-options(scipen = 100)
 
 knitr::kable(dim(ames),caption = "Ames Housing Dataset dimension")
 
-knitr::kable(colnames(ames),caption = "Ames Housing Dataset Columns")
+print("Ames Housing Dataset Columns")
+colnames(ames)
 
 knitr::kable(str(ames),caption = "Ames Housing Dataset")
 
@@ -121,7 +120,7 @@ cat("\nSale Price skewness :", skewness(ames$Sale_Price))
 cat("\nSale Price kurtosis :", kurtosis(ames$Sale_Price))
 ```
 
-## Age of the Building
+## Houses and Year Built
 
 
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
@@ -133,19 +132,18 @@ ames %>%
   labs(title = "Year Built", x = "Year Built", y = "No of Houses") 
 
 ```
-It looks that we have more houses were built at the begining of 2000
+It looks that we have more houses were built at the beginning of 2000.
 
 ## Condition of the houses
 
-```{r , echo = FALSE, message = FALSE, warning = FALSE}
+```{r , echo = FALSE, message = FALSE, warning = FALSE, fig.align="center", fig.width = 14}
 ames %>%
   ggplot(aes(Overall_Cond)) +
   geom_bar(color = "black") +
-  #  scale_x_continuous() +
   labs(title = "Overall Condition of the houses", x = "Overall Cond.", y = "No of Houses")
 
 ```
-## House condition - most of the houses are of average condition
+House condition - most of the houses are of average condition
 
 ## Neighborhood and House Price
 
@@ -215,11 +213,10 @@ I also looked at some non-numeric variables and their relatins with the Sale Pri
 ## Looking at the non-numeric variable, I identified few variables which are highly correlated - 
   MS_Zoning, Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC, 
   
-#Feature Engineering and additional visualizations
+# Feature Engineering and additional visualizations
 
 ## Created a variable total_area = First_Flr_SF + Second_Flr_SF + Total_Bsmt_SF 
 ## Created a variable total_Bathroom = Full_Bath + Bsmt_Full_Bath + 0.5* Half_Bath+ 0.5 * Bsmt_Half_Bath 
-## Created a variable sales_price_T = sale_Price_T
 ## Created a variable orarall_Condition_n a numeric representation of overall_Condition
 ## Created a variable house_Age = year_Sold - year_Build
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
@@ -242,14 +239,7 @@ ames <- ames %>%
 
 cat("\nCorelation between Age of House and Sale Price :",  cor(ames$house_Age,ames$Sale_Price))
 
-#X['reModeled'] = np.where(X.YearRemodAdd == X.YearBuilt, 0, 1)
 
-### SalePrice_T -> Sales Price in Thousands
-
-ames <- ames %>%
-  mutate(Sale_Price_T = round(Sale_Price/1000))
-
-ames$Sale_Price_T[is.na(ames$Sale_Price_T)] <- 0
 
 ### Overall Condition
 #Levels: Very_Poor Poor Fair Below_Average Average Above_Average Good Very_Good Excellent Very_Excellent
@@ -286,67 +276,68 @@ ames %>%
 ### Linear 
 # Total Area vs. Price
 ames %>%
-  ggplot(aes(total_Area,Sale_Price_T)) +
+  ggplot(aes(total_Area,Sale_Price)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
-  labs(title = "Total Area vs. Sales Price", x = "Total Area (sqft)", y = "Sale Price ($,000)")
+  labs(title = "Total Area vs. Sales Price", x = "Total Area (sqft)", y = "Sale Price ($)")
 
 
 # Age of the House vs. Price
 
 ames %>%
-  ggplot(aes(house_Age ,Sale_Price_T)) +
+  ggplot(aes(house_Age ,Sale_Price)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
-  labs(title = "Age of the house vs. Sales Price", x = "Age", y = "Sale Price ($,000)")
+  labs(title = "Age of the house vs. Sales Price", x = "Age", y = "Sale Price ($)")
 
 
 
 # Overall Condition vs. Price
 
 ames %>%
-  ggplot(aes(Overall_Cond_n,Sale_Price_T)) +
+  ggplot(aes(Overall_Cond_n,Sale_Price)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
-  labs(title = "Overall Condition vs. Sales Price", x = "Overall Condition", y = "Sale Price ($,000)")
+  labs(title = "Overall Condition vs. Sales Price", x = "Overall Condition", y = "Sale Price ($)")
 
 ```
 Looking at the negative correlation between overall condition of the house and sales price I felt that there is something incorrect about the data. I excluded the overall condition from the final parameter set  
 # Create Final Set with Parameters
 ## Numeric - 
-Sale_Price_T,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area,
+Sale_Price,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area,
                          Year_Remod_Add, Mas_Vnr_Area,  
 ## Non-Numeric -
 House Attributes - Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC, 
 External Attributes - MS_Zoning, Neighborhood
 
-```{r}
-ames <- ames %>% select (Sale_Price_T,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area,
+```{r , echo = FALSE, message = FALSE, warning = FALSE, eval = TRUE}
+ames <- ames %>% select (Sale_Price,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area,
                          Year_Remod_Add, Mas_Vnr_Area,  Lot_Shape, Foundation, Sale_Condition , Garage_Finish,    House_Style, Heating_QC, MS_Zoning, Neighborhood  )
+
+ames %>% ggcorr(size = 3, label = TRUE, label_size = 4, label_round = 2, label_alpha = TRUE) +
+  ggplot2::labs(title = "Correlation between Numeric Variables of the Final Attribute Sets")
 
 ```
 
 
-
-## Create Test Set and Training set for building Linear Models
-# test set will be 20% of housing_data data
+# Create Test Set and Training set for building Linear Models
+## Test set will be 20% of housing_data data
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
 set.seed(2023, sample.kind="Rounding")
-test_index <- createDataPartition(y = ames$Sale_Price_T, times = 1,
+test_index <- createDataPartition(y = ames$Sale_Price, times = 1,
                                   p = 0.2, list = FALSE)
 train_set <- ames[-test_index,]
 test_set <- ames[test_index,]
 
 knitr::kable(dim(ames),caption = "Ames Housing Dataset dimension")
 
-knitr::kable(head(ames), caption = "Ames Housing Dataset")
 
 knitr::kable(summary(ames), caption = "Ames Housing Dataset Summary")
 
 ```
 # House Price Prediction Model - develop, train and test
 
-#Average House Price
+# Average House Price
 
 ## Build Linear Models
 I started with linear model and some selected set of parameters/attributes and evaluated the performaces of the models use RMSE.
@@ -360,49 +351,62 @@ RMSE <- function(true_ratings, predicted_ratings){
 
 # Calculate the overall average rating across all movies included in the training set
 
-mu_hat <- mean(train_set$Sale_Price_T)
+mu_hat <- mean(train_set$Sale_Price)
 
 
 # Calculate RMSE based on naive model
-naive_rmse <- round(RMSE(test_set$Sale_Price_T, mu_hat),2)
-rmse_results <- tibble(method = "Just the average in ,000", RMSE = naive_rmse)
+naive_rmse <- round(RMSE(test_set$Sale_Price, mu_hat),2)
+rmse_results <- tibble(method = "Just the average: ", RMSE = naive_rmse)
 cat("\nNaive RMSE in ,000 :",naive_rmse)
 
+```
+## 1st Leaner Model - Sale Price ~ total area + total bathroom
+Build the model using training set data
+Predict the Sale Prices of the test set
+Calculate RMSA
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
 # Linear Model Sale Price ~ total area + total bathroom 
 
 
 #head(train_set)
 
 model_ln1 <- train_set %>%
-  #filter(yearID %in% 1961:2001) %>%
-  #mutate(BB = BB/G, HR = HR/G, R = R/G) %>%
-  lm(Sale_Price_T ~ total_Area + total_Bathroom , data = .)
+  lm(Sale_Price ~ total_Area + total_Bathroom , data = .)
 
 y_hat <- predict(model_ln1, newdata = test_set)
 
-#RMSE(test_set$Sale_Price_T,y_hat)
+#RMSE(test_set$Sale_Price,y_hat)
 
 summary(model_ln1)
 
 
 # Calculate RMSE based on area effects
-model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+model_rmse <- RMSE(test_set$Sale_Price,y_hat)
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Total Area and Total Bathroom Effect Model in in ,000",
+                          tibble(method="Linear Model based on Total Area and Total Bathroom: ",
                                      RMSE = model_rmse ))
 
+
+```
+## 1st Linear Model coefficients and RMSE
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
 rmse_results %>% knitr::kable()
+model_ln1$coefficients 
 
 # Estimate age of house effect along with total area  effect
+```
+
+## Second Linear Model using all selected Numeric Attributes
+
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
 
 model_ln2 <- ames %>%
-  #filter(yearID %in% 1961:2001) %>%
-  lm(Sale_Price_T ~ total_Area +total_Bathroom + house_Age + Garage_Cars + Garage_Area +
+  lm(Sale_Price ~ total_Area +total_Bathroom + house_Age + Garage_Cars + Garage_Area +
      Year_Remod_Add +Mas_Vnr_Area, data = .)
 
 y_hat <- predict(model_ln2, newdata = test_set)
 
-RMSE(test_set$Sale_Price_T,y_hat)
+RMSE(test_set$Sale_Price,y_hat)
 
 
 tidy(model_ln2, conf.int = TRUE)
@@ -411,60 +415,77 @@ summary(model_ln2)
 
 
 # Calculate RMSE based on numeric attributes
-model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+model_rmse <- RMSE(test_set$Sale_Price,y_hat)
 
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Model based on Numeric attributes of the dataset in ,000",  
+                          tibble(method="Linear Model based on selected Numeric attributes of the dataset: ",  
                                      RMSE = model_rmse ))
-rmse_results %>% knitr::kable()
+
 
 ```
+
+
 With linear model and with a set of attributes I was able to tune the model and reduce RMSE.
+
+# Final Linear Model coefficients and model improvements
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
+rmse_results %>% knitr::kable()
+
+model_ln2$coefficients 
+```
+
 
 # Non-linear Models
 I wanted to further tune the model and enhance the accuracy. I planned to use "kNN", "Classification and regression trees (CART)" and Random Forrest. I added the non-linear parameters with the linear ones. Some of the non-linear ones are attributes of the house and some are external 
 External attributes - Zoning and Neighborhood
 
 ## k Nearest Neighbor (kNN) Model
+Build th model and find out the predicted Sale Prices
+Calculate RMSE
 
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
 ## K Nearest Neighbor 
 
 
-train_knn <- train(Sale_Price_T ~ ., method = "knn",
+train_knn <- train(Sale_Price ~ ., method = "knn",
                    data = train_set,
                    tuneGrid = data.frame(k = seq(9, 71, 2)))
 
 summary(train_knn)
 
-ggplot(train_knn, highlight = TRUE)
+ggplot(train_knn, highlight = TRUE) +
+  labs(title = "Knn Model Cross Validation")
 
 y_hat <- round(predict(train_knn, test_set, type = "raw"))
 
 # Calculate RMSE based on Knn Model
-model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+model_rmse <- RMSE(test_set$Sale_Price,y_hat)
 
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Knn Model in ,000",  
+                          tibble(method="Knn Model: ",  
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
 
-#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
+#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price,levels=1:490))$overall["Accuracy"]
 
 
 ```
 Next I am using Classification and regression trees (CART) model to see whether it reduces the RMSE value
-# Using Model - Classification and regression trees (CART)
 
-```{r}
+# Using Model - Classification and regression trees (CART)
+Build th model and find out the predicted Sale Prices
+Calculate RMSE
+
+```{r , echo = FALSE, message = FALSE, warning = FALSE}
 
 # fit a classification tree and plot it
-train_rpart <- train(Sale_Price_T ~ .,
+train_rpart <- train(Sale_Price ~ .,
                      method = "rpart",
                      tuneGrid = data.frame(cp = seq(0.0, 0.1, len = 25)),
                      data = train_set)
-plot(train_rpart)
+ggplot(train_rpart) +
+  labs(title = "CART Model Cross Validation")
 
 #predict(train_rpart, test_set)
 
@@ -472,10 +493,10 @@ y_hat <- round(predict(train_rpart, test_set))
 
 
 # Calculate RMSE based on Classification and regression trees (CART)
-model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+model_rmse <- RMSE(test_set$Sale_Price,y_hat)
 
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Classification and regression trees (CART) Model in ,000",  
+                          tibble(method="Classification and regression trees (CART) Model: ",  
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
@@ -483,13 +504,17 @@ rmse_results %>% knitr::kable()
 
 ```
 
-#Random Forrest -
+# Random Forrest -
+
+Train the model and find out the predicted Sale Prices
+Calculate RMSE
 
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
 # Random Forrest
 
-train_rf <- randomForest(Sale_Price_T ~ ., data=train_set)
+train_rf <- randomForest(Sale_Price ~ ., data=train_set)
 
+print("Error vs. Trees")
 
 plot(train_rf)
 
@@ -497,14 +522,14 @@ plot(train_rf)
 y_hat <- predict(train_rf, test_set)
 
 # Calculate RMSE based on Random Forrest Model
-model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+model_rmse <- RMSE(test_set$Sale_Price,y_hat)
 
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Random Forrest in ,000",  
+                          tibble(method="Random Forrest Model: ",  
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
-#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
+#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price,levels=1:490))$overall["Accuracy"]
 ```
 
 
@@ -512,9 +537,9 @@ rmse_results %>% knitr::kable()
 I got the best result when I used the Classification and regression trees (CART). I wanted to use the Confusion Matrix to calculate the accuracy for in the case of kNN and Classification and regression trees (CART). But because Sale Price is a continuous variable, I could not use Confusion Matrix function directly. When I converted Sale Price ( both predicted and original) into factor, I got extremely low accuracy. After doing further research I found out that this is not a ideal situation to use Confusion Matrix to calculate the accuracy.
 
 
-# Final Result and improvements over time
+# Final Result and Model Performances
 
-RMSEs over Model
+RMSEs over Models
 
 
 ```{r , echo = FALSE, message = FALSE, warning = FALSE}
@@ -526,7 +551,7 @@ rmse_results %>% knitr::kable()
 # Conclusion 
 To build the House Price Prediction model I started with building Linear model with a set of numeric variables. I identified those variables by observing strong correlation with the "Sale Price"
 ## Parameters used in the Linear Model 
-Sale_Price_T,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area, Year_Remod_Add,  Mas_Vnr_Area
+Sale_Price,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area, Year_Remod_Add,  Mas_Vnr_Area
 I used RMSE to calculate the efficiency 
 
 Next to reduce th error margin , I looked at three other Models kNN, Classification and regression trees (CART) and Random Forrest. I identified some non-numeric attributes looking at their correlation with the Sale Price 

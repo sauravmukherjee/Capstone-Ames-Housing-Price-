@@ -49,7 +49,7 @@ options(repr.plot.width = 4, repr.plot.height =4)
 
 # Getting the path of your current open file
 current_path = rstudioapi::getActiveDocumentContext()$path 
-setwd(dirname(current_path ))
+#setwd(dirname(current_path ))
 
 
 options(timeout = 120)
@@ -61,25 +61,16 @@ options(timeout = 120)
 
 # Exploratory Data Analysis
 
-knitr::kable(dim(ames),caption = "Ames Housing Dataset dimension")
-
-knitr::kable(colnames(ames),caption = "Ames Housing Dataset Columns")
-
-knitr::kable(str(ames),caption = "Ames Housing Dataset")
-
-#knitr::kable(summary(ames),caption = "Ames Housing Dataset")
-
-
-############### Data Exploration and Visualization
-
-
+## Explore Ame Dataset - Dimension, Columns and Datatypes
 
 
 knitr::kable(dim(ames),caption = "Ames Housing Dataset dimension")
 
-#knitr::kable(colnames(ames),caption = "Ames Housing Dataset Columns")
+print("Ames Housing Dataset Columns")
+colnames(ames)
 
-knitr::kable(str(ames),caption = "Ames Housing Dataset")
+knitr::kable(str(ames), align = "lccrr" ,caption = "Ames Housing Dataset")
+
 
 # Sale Price Characteristics 
 
@@ -207,10 +198,6 @@ cat("\nCorelation between Age of House and Sale Price :",  cor(ames$house_Age,am
 
 ### SalePrice_T -> Sales Price in Thousands
 
-ames <- ames %>%
-  mutate(Sale_Price_T = round(Sale_Price/1000))
-
-ames$Sale_Price_T[is.na(ames$Sale_Price_T)] <- 0
 
 ### Overall Condition
 #Levels: Very_Poor Poor Fair Below_Average Average Above_Average Good Very_Good Excellent Very_Excellent
@@ -247,60 +234,52 @@ ames %>%
 ### Linear 
 # Total Area vs. Price
 ames %>%
-  ggplot(aes(total_Area,Sale_Price_T)) +
+  ggplot(aes(total_Area,Sale_Price)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
-  labs(title = "Total Area vs. Sales Price", x = "Total Area (sqft)", y = "Sale Price ($,000)")
+  labs(title = "Total Area vs. Sales Price", x = "Total Area (sqft)", y = "Sale Price ($)")
 
 
 # Age of the House vs. Price
 
 ames %>%
-  ggplot(aes(house_Age ,Sale_Price_T)) +
+  ggplot(aes(house_Age ,Sale_Price)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
-  labs(title = "Age of the house vs. Sales Price", x = "Age", y = "Sale Price ($,000)")
+  labs(title = "Age of the house vs. Sales Price", x = "Age", y = "Sale Price ($)")
 
 
 
 # Overall Condition vs. Price
 
 ames %>%
-  ggplot(aes(Overall_Cond_n,Sale_Price_T)) +
+  ggplot(aes(Overall_Cond_n,Sale_Price)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm") +
-  labs(title = "Overall Condition vs. Sales Price", x = "Overall Condition", y = "Sale Price ($,000)")
+  labs(title = "Overall Condition vs. Sales Price", x = "Overall Condition", y = "Sale Price ($)")
 
 
 
 
 ## Excluded Overall Condition from the parameter set 
 
-ames <- ames %>% select (Sale_Price_T,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area,
+ames <- ames %>% select (Sale_Price,total_Area, Gr_Liv_Area, house_Age, total_Bathroom ,Garage_Cars,Garage_Area,
                          Year_Remod_Add, Mas_Vnr_Area,  Lot_Shape, Foundation, Sale_Condition , Garage_Finish, House_Style, Heating_QC, 
                          MS_Zoning, Neighborhood  )
 
 
 
 # Let's see the correlation matrix
-ggcorr(ames, size = 3, label = TRUE, label_size = 4, label_round = 2, label_alpha = TRUE)
+ames %>% ggcorr(size = 3, label = TRUE, label_size = 4, label_round = 2, label_alpha = TRUE) +
+  ggplot2::labs(title = "Correlation between Numeric Variables of the Final Attribute Sets")
 
 ## "SalePrice"
-
-
-#housing<- housing %>% 
-#mutate_if(is.numeric, ~replace_na(., 0)) %>%
-#  mutate_if(is.character, ~replace_na(., ""))
-
-#housing<- housing %>% 
-#  mutate(across(everything(), ~replace(.x, is.nan(.x), 0)))
-
 
 
 
 # test set will be 20% of housing_data data
 set.seed(2023, sample.kind="Rounding")
-test_index <- createDataPartition(y = ames$Sale_Price_T, times = 1,
+test_index <- createDataPartition(y = ames$Sale_Price, times = 1,
                                   p = 0.2, list = FALSE)
 train_set <- ames[-test_index,]
 test_set <- ames[test_index,]
@@ -313,12 +292,7 @@ test_set <- ames[test_index,]
 
 knitr::kable(dim(ames),caption = "Ames Housing Dataset dimension")
 
-knitr::kable(head(ames), caption = "Ames Housing Dataset")
-
 knitr::kable(summary(ames), caption = "Ames Housing Dataset Summary") 
-
-
-
 
 
 ###########################################################################################################################
@@ -336,12 +310,12 @@ RMSE <- function(true_ratings, predicted_ratings){
 
 # Calculate the overall average rating across all movies included in the training set
 
-mu_hat <- mean(train_set$Sale_Price_T)
+mu_hat <- mean(train_set$Sale_Price)
 
 
 # Calculate RMSE based on naive model
-naive_rmse <- round(RMSE(test_set$Sale_Price_T, mu_hat),2)
-rmse_results <- tibble(method = "Just the average in ,000", RMSE = naive_rmse)
+naive_rmse <- round(RMSE(test_set$Sale_Price, mu_hat),2)
+rmse_results <- tibble(method = "Just the average: ", RMSE = naive_rmse)
 cat("\nNaive RMSE in ,000 :",naive_rmse)
 
 # Linear Model Sale Price ~ total area + total bathroom 
@@ -350,35 +324,34 @@ cat("\nNaive RMSE in ,000 :",naive_rmse)
 #head(train_set)
 
 model_ln1 <- train_set %>%
-  #filter(yearID %in% 1961:2001) %>%
-  #mutate(BB = BB/G, HR = HR/G, R = R/G) %>%
-  lm(Sale_Price_T ~ total_Area + total_Bathroom , data = .)
+  lm(Sale_Price ~ total_Area + total_Bathroom , data = .)
 
 y_hat <- predict(model_ln1, newdata = test_set)
 
-#RMSE(test_set$Sale_Price_T,y_hat)
+#RMSE(test_set$Sale_Price,y_hat)
 
 summary(model_ln1)
 
 
 # Calculate RMSE based on area effects
-model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+model_rmse <- RMSE(test_set$Sale_Price,y_hat)
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Total Area and Total Bathroom Effect Model in in ,000",
+                          tibble(method="Linear Model based on Total Area and Total Bathroom: ",
                                      RMSE = model_rmse ))
 
 rmse_results %>% knitr::kable()
 
+model_ln1$coefficients 
+
 # Estimate age of house effect along with total area  effect
 
 model_ln2 <- ames %>%
-  #filter(yearID %in% 1961:2001) %>%
-  lm(Sale_Price_T ~ total_Area +total_Bathroom + house_Age + Garage_Cars + Garage_Area +
+  lm(Sale_Price ~ total_Area +total_Bathroom + house_Age + Garage_Cars + Garage_Area +
      Year_Remod_Add +Mas_Vnr_Area, data = .)
 
 y_hat <- predict(model_ln2, newdata = test_set)
 
-RMSE(test_set$Sale_Price_T,y_hat)
+RMSE(test_set$Sale_Price,y_hat)
 
 
 tidy(model_ln2, conf.int = TRUE)
@@ -387,12 +360,16 @@ summary(model_ln2)
 
 
 # Calculate RMSE based on numeric attributes
-model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+model_rmse <- RMSE(test_set$Sale_Price,y_hat)
 
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Model based on Numeric attributes of the dataset in ,000",  
+                          tibble(method="Linear Model based on Numeric attributes of the dataset: ",  
                                      RMSE = model_rmse ))
+# Final Linear Model Result and coefficients 
+
 rmse_results %>% knitr::kable()
+
+model_ln2$coefficients 
 
 
 ## Non-Linear Model
@@ -401,49 +378,52 @@ rmse_results %>% knitr::kable()
 
 
 
-train_knn <- train(Sale_Price_T ~ ., method = "knn",
+train_knn <- train(Sale_Price ~ ., method = "knn",
                    data = train_set,
                    tuneGrid = data.frame(k = seq(9, 71, 2)))
 
 summary(train_knn)
 
-ggplot(train_knn, highlight = TRUE)
+ggplot(train_knn, highlight = TRUE) +
+  labs(title = "Knn Model Cross Validation")
 
 y_hat <- predict(train_knn, test_set, type = "raw")
 
 # Calculate RMSE based on Knn Model
-model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+model_rmse <- RMSE(test_set$Sale_Price,y_hat)
 
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Knn Model in ,000",  
+                          tibble(method="Knn Model: ",  
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
 
-#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
+#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price,levels=1:490))$overall["Accuracy"]
 
 
 # fit a classification tree and plot it
-train_rpart <- train(Sale_Price_T ~ .,
+train_rpart <- train(Sale_Price ~ .,
                      method = "rpart",
                      tuneGrid = data.frame(cp = seq(0.0, 0.1, len = 25)),
                      data = train_set)
-plot(train_rpart)
+ggplot(train_rpart) +
+  labs(title = "CART Model Cross Validation")
 
+#summary(train_rpart)
 
 y_hat <- predict(train_rpart, test_set)
 
 #y_hat <- factor(predict(train_rpart, test_set))
 
 # Calculate RMSE based on Knn Model
-model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+model_rmse <- RMSE(test_set$Sale_Price,y_hat)
 
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Classification and regression trees (CART) Model in ,000",  
+                          tibble(method="Classification and regression trees (CART) Model: ",  
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
-#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
+#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price,levels=1:490))$overall["Accuracy"]
 
 
 
@@ -452,7 +432,7 @@ rmse_results %>% knitr::kable()
 
 # Random Forrest
 
-train_rf <- randomForest(Sale_Price_T ~ ., data=train_set)
+train_rf <- randomForest(Sale_Price ~ ., data=train_set)
 
 
 plot(train_rf)
@@ -461,14 +441,14 @@ plot(train_rf)
 y_hat <- predict(train_rf, test_set)
 
 # Calculate RMSE based on Random Forrest Model
-model_rmse <- RMSE(test_set$Sale_Price_T,y_hat)
+model_rmse <- RMSE(test_set$Sale_Price,y_hat)
 
 rmse_results <- bind_rows(rmse_results,
-                          tibble(method="Random Forrest in ,000",  
+                          tibble(method="Random Forrest Model: ",  
                                  RMSE = model_rmse ))
 rmse_results %>% knitr::kable()
 
-#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price_T,levels=1:490))$overall["Accuracy"]
+#confusionMatrix(factor(y_hat,levels=1:490),factor(test_set$Sale_Price,levels=1:490))$overall["Accuracy"]
 
-#Models and Performances 
+# Final Result and Model Performances
 rmse_results %>% knitr::kable()
